@@ -19,15 +19,25 @@ We formulate this task as a **Multi-Task E-Commerce Support Automation Pipeline*
 
 ---
 
-## 2. Dataset and Sampling
+## 2. Dataset, Sampling & Evaluation Design
 
-### 2.1 Raw Dataset & Brand Scope
+```
+TWCS Dataset (@AmazonHelp Subset: 374,304 tweets, 82,636 threads)
+                       │
+       ┌───────────────┴───────────────┐
+       ▼                               ▼
+Historical RAG Index             Development Set                    Frozen Heldout Benchmark
+(25,544 resolved cases)        (golden_set_final.csv, n=200)       (heldout_test_final.csv, n=200)
+Used for FAISS vector          Used for Taxonomy & Policy           Strictly Frozen Final Benchmark
+retrieval evidence             Development (Seed 42)                0 Dev Overlap (Seed 2026)
+```
+
+### 2.1 Brand Scope & Subsampling
 - **Source**: Twitter Customer Support (TWCS) dataset (~2.81M tweets across 70+ brands).
-- **Brand Scope**: Filtered exclusively to **`@AmazonHelp`** interactions (~374k tweets across 82,636 conversation threads).
-- **English Threads Subset**: ~75,897 clean English conversation threads.
+- **Brand Scope**: Filtered exclusively to **`@AmazonHelp`** interactions (~374k tweets across 82,636 conversation threads; ~75,897 clean English threads).
 
 ### 2.2 Golden Development Set (n=200)
-- **Sampling**: Stratified sampling across thread lengths and keywords (Seed 42).
+- **Sampling**: Stratified sampling across thread lengths and keywords (`golden_set_final.csv`, Seed 42).
 - **Human Audit**: 100% human-reviewed. Confirmed 93 pre-labels and corrected 107.
 - **Intent Distribution**: `delivery_shipping_delay` (56), `unclear_other` (27), `item_condition_issue` (24), `returns_refund_inquiry` (21), `account_access_security` (17), `digital_streaming_services` (16), `payment_promo_giftcard` (13), `device_hardware_support` (8), `prime_membership_billing` (8), `order_modification_cancellation` (6), `marketplace_third_party_seller` (4).
 - **Human Escalation**: `True` = 135 (67.5%), `False` = 65 (32.5%).
@@ -35,7 +45,7 @@ We formulate this task as a **Multi-Task E-Commerce Support Automation Pipeline*
 ### 2.3 Frozen Heldout Test Set (n=200)
 - **Sampling**: Independent 200-example sample (`heldout_test_final.csv`, Seed 2026).
 - **Leakage Prevention**: Zero thread overlap with development set (340 root conversations excluded).
-- **Human Verification**: 100% independently human-audited. Kept completely frozen during development.
+- **Human Verification**: 100% independently human-audited. Kept completely frozen during development; heldout labels were strictly hidden during inference and tuning.
 
 ---
 
@@ -47,31 +57,30 @@ The final system uses a **Hybrid RAG Pipeline** combining local LLM semantic und
 Incoming Customer Conversation
         │
         ▼
-Context Reconstruction & Vector Search (FAISS + MiniLM-L6-v2)
-        │
-        ▼
-Top-3 Historical AmazonHelp Evidence Cases
+Context Reconstruction & Vector Search (FAISS + MiniLM-L6-v2) ──► Top-3 Resolved Historical Cases
+(Current Conversation ID Excluded)
         │
         ▼
 Ollama Qwen2.5 3B (Local LLM)
         ├─► Predicted Intent
-        └─► Public Reply Draft
+        ├─► Public Reply Draft
+        └─► Raw Escalation Suggestion
         │
         ▼
-Deterministic Escalation Policy Engine
+Deterministic Escalation Policy Engine (Final Authority)
         ├─► Order/Tracking Lookup Check
         ├─► Private Account / Security Check
         ├─► Refund / Monetary Action Check
         └─► Marketplace Dispute Check
         │
         ▼
-Final Escalation Decision + Rationale
+Final Escalation Decision + Rationale Output
 ```
 
-### Key Architectural Choices:
+### Architectural Principles:
 1. **Local LLM (`qwen2.5:3b`)**: Zero-shot semantic intent classification and public reply drafting via structured JSON output.
-2. **FAISS Historical Retrieval**: Indexes 25,544 resolved AmazonHelp conversations using `sentence-transformers/all-MiniLM-L6-v2` (384-dim). During evaluation, the current conversation ID is strictly excluded from retrieval to prevent data leakage.
-3. **Deterministic Escalation Policy**: Deterministic policy rules provide predictable escalation behavior and improve safety for sensitive customer actions, while the heldout evaluation shows 95.0% escalation recall.
+2. **FAISS Historical Retrieval**: Indexes 25,544 resolved AmazonHelp conversations using `sentence-transformers/all-MiniLM-L6-v2` (384-dim). During evaluation, the current conversation ID is strictly excluded from retrieval to prevent data leakage. Historical cases provide resolution style and formatting grounding, but are **not** used as hidden intent labels.
+3. **Deterministic Escalation Policy**: Deterministic policy rules provide predictable escalation behavior and improve safety for sensitive customer actions. The policy engine is the **final authority** for escalation decisions; raw LLM escalation suggestions are logged for comparison but do not override policy rules.
 
 ---
 
@@ -91,15 +100,15 @@ We compare our Hybrid RAG system against pre-existing baselines evaluated on the
 
 ### 5.1 System Benchmark Comparison (n=200 Heldout)
 
-| System | Intent Acc | Intent Macro F1 | Esc Acc | Esc F1 | Combined |
-| :--- | ---: | ---: | ---: | ---: | ---: |
-| **Rule V1** | 60.50% | 0.5447 | 78.50% | 0.8060 | 52.50% |
-| **Rule V2** | 58.50% | 0.4643 | 76.50% | 0.8418 | 50.50% |
-| **TF-IDF + Logistic Regression** | 53.00% | 0.4030 | **86.00%** | **0.9146** | 48.00% |
-| **Hybrid RAG + LLM** | **65.50%** | **0.5836** | 84.00% | 0.9048 | **58.00%** |
+| System | Intent Acc | Intent Macro F1 | Esc Acc | Esc Precision | Esc Recall | Esc F1 | Combined Acc |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **Rule V1** | 60.50% | 0.5447 | 78.50% | 0.7714 | 0.8438 | 0.8060 | 52.50% |
+| **Rule V2** | 58.50% | 0.4643 | 76.50% | 0.8170 | 0.7813 | 0.8418 | 50.50% |
+| **TF-IDF + Logistic Regression** | 53.00% | 0.4030 | **86.00%** | **0.8929** | 0.9375 | **0.9146** | 48.00% |
+| **Hybrid RAG + LLM** | **65.50%** | **0.5836** | 84.00% | 0.8636 | **0.9500** | 0.9048 | **58.00%** |
 
 - **Escalation Confusion Matrix (Hybrid RAG)**: TP = 152, FN = 8, FP = 24, TN = 16 (Precision: 0.8636, Recall: 0.9500).
-- **Latency & Recorded Runtime**: The recorded frozen heldout evaluation completed in approximately **11.3 minutes** (679.7 seconds) after prerequisites and the retrieval index were available. Avg LLM Latency: 3.18s (Median: 2.92s). Avg Retrieval Latency: ~210 ms.
+- **Recorded Runtime**: The recorded frozen heldout evaluation completed in approximately **11.3 minutes** (679.7 seconds) after prerequisites and the retrieval index were available. Avg LLM Latency: 3.18s (Median: 2.92s). Avg Retrieval Latency: ~210 ms.
 
 ### 5.2 Per-Intent Performance (Hybrid RAG Heldout)
 
@@ -119,7 +128,7 @@ We compare our Hybrid RAG system against pre-existing baselines evaluated on the
 
 ---
 
-## 6. Reply Quality and Human Agreement
+## 6. Reply Quality Evaluation & Human Agreement
 
 Evaluated on a 50-example representative heldout subset across 6 dimensions (1-5 scale):
 
@@ -144,39 +153,39 @@ Evaluated on a 50-example representative heldout subset across 6 dimensions (1-5
 - **Example**:  
   Customer: `"@AmazonHelp I expect a refund for my delivery charge."`  
   Gold intent: `returns_refund_inquiry` | Predicted intent: `delivery_shipping_delay`  
-- **Hypothesis**: The presence of the phrase "delivery charge" triggered delivery keyword heuristics, despite the primary request being a monetary refund inquiry.
+- **Hypothesis**: The classifier appears to overweight salient delivery keywords ("delivery charge") even when the primary actionable request is a refund.
 
 ### 2. Unclear / General Inquiries Mistaken for Delivery (9 examples)
 - **Example**:  
   Customer: `"@AmazonHelp May I ask why they're listed as prime if you can't deliver any the next day? I'd understand 1 item? But all 4 seems a poor service?"`  
   Gold intent: `unclear_other` | Predicted intent: `delivery_shipping_delay`  
-- **Hypothesis**: Generic customer feedback regarding Prime delivery expectations contains delivery timing terms, leading the classifier to misclassify general feedback as an active delivery delay.
+- **Hypothesis**: Generic customer feedback containing delivery timing terms is misclassified as an active delivery delay inquiry.
 
 ### 3. Item Condition Issues Mistaken for Delivery (8 examples)
 - **Example**:  
   Customer: `"@AmazonHelp It finally got here, 20 min late &amp; it’s missing food 😡"`  
   Gold intent: `item_condition_issue` | Predicted intent: `delivery_shipping_delay`  
-- **Hypothesis**: The customer combined arrival timing ("20 min late") with a missing item complaint, causing delivery timing signals to overshadow the item condition issue.
+- **Hypothesis**: Arrival timing mentions ("20 min late") overshadow the missing item condition complaint.
 
 ### 4. Order Modification / Cancellation Mistaken for Delivery (4 examples)
 - **Example**:  
   Customer: `"@AmazonHelp Asked for you to contact courier? Put notes and directions on the system? Asked for different postcode to be applied but then hung up on me"`  
   Gold intent: `order_modification_cancellation` | Predicted intent: `delivery_shipping_delay`  
-- **Hypothesis**: Logistics terms like "courier", "postcode", and "directions" dominate the context, steering prediction toward delivery issues rather than address modification.
+- **Hypothesis**: Logistics terms ("courier", "postcode") steer prediction toward delivery issues rather than address modification.
 
 ### 5. Marketplace Seller Disputes Mistaken for Delivery (4 examples)
 - **Example**:  
   Customer: `"@AmazonHelp I’m not talking about delivery charges but the MRP rates. Even though seller indicates this doesn’t it mean you validate this stuff?"`  
   Gold intent: `marketplace_third_party_seller` | Predicted intent: `delivery_shipping_delay`  
-- **Hypothesis**: Mentioning "delivery charges" while disputing third-party seller pricing causes the classifier to catch delivery keywords instead of seller validation intent.
+- **Hypothesis**: Mentioning "delivery charges" while disputing seller pricing causes the model to catch delivery keywords instead of seller validation intent.
 
-*Dominant Pattern*: Systematic over-prediction of `delivery_shipping_delay` (59/200 heldout examples, recall = 100%, precision = 56.19%).
+*Note: These hypotheses represent observed-error patterns based on prediction logs rather than proven causal mechanisms.*
 
 ---
 
 ## 8. What Is Misleading About My Headline Number?
 
-The 65.50% intent accuracy is useful but incomplete. It averages over an uneven intent distribution and hides weak performance on lower-frequency intents; Macro F1 of 0.5836 exposes this. Combined decision accuracy is only 58.0%, showing that correct intent classification does not always translate into the correct downstream escalation decision. The heldout set contains 200 examples, so the result should be interpreted as an evaluation snapshot rather than a production performance estimate.
+The **65.50%** intent accuracy is useful but incomplete. It averages over an uneven intent distribution and hides weak performance on lower-frequency intents; Macro F1 of **0.5836** exposes this. Combined decision accuracy is only **58.00%**, showing that correct intent classification does not always translate into the correct downstream escalation decision. The heldout set contains 200 examples, so the result should be interpreted as an evaluation snapshot rather than a production performance estimate.
 
 ---
 
@@ -192,13 +201,13 @@ The 65.50% intent accuracy is useful but incomplete. It averages over an uneven 
 
 ---
 
-## 10. One-Week Next Steps
+## 10. What I Would Improve Next
 
-1. **Expand Rare Intent Labels**: Collect 500+ labelled examples for minority intent classes (`order_modification_cancellation`, `marketplace_third_party_seller`).
-2. **Refine Intent Boundaries**: Add negative keyword constraints between delivery delays and return/refund inquiries.
-3. **Dense Reranking & Retrieval Filtering**: Implement cross-encoder reranking to improve historical case relevance.
-4. **Action-Aware Reply Generation**: Enhance public replies for escalated cases to explicitly explain DM routing next steps.
-5. **Production Benchmarking**: Expand heldout evaluation to a 1,000-example benchmark.
+1. **Hard-Negative Training & Few-Shot Examples**: Add explicit hard-negative few-shot examples differentiating delivery delays from refund requests, item condition complaints, and marketplace disputes.
+2. **Ambiguity Handling**: Introduce structured clarifying prompts for generic queries before assigning a functional intent.
+3. **Fresh Benchmark Evaluation**: Evaluate all future model improvements on a **NEW, untouched test set** rather than retuning against the current heldout set.
+4. **Calibrated Multi-Judge Ensembling**: Improve LLM judge calibration using anchored rubric examples and multi-judge consensus scoring.
+5. **Hybrid Vector & Lexical Retrieval**: Benchmark BM25 + dense hybrid search against pure dense retrieval to improve case grounding.
 
 ---
 
