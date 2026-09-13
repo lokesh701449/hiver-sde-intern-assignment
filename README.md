@@ -5,26 +5,20 @@
 [![Vector Index](https://img.shields.io/badge/FAISS-MiniLM--L6--v2-green.svg)](https://github.com/facebookresearch/faiss)
 [![Evaluation Benchmark](https://img.shields.io/badge/Benchmark-Frozen%20Heldout%20(n%3D200)-purple.svg)](./evaluation/heldout_test_final.csv)
 
-> **Hybrid RAG Support Agent — 65.5% intent accuracy, 95.0% escalation recall, and 58.0% end-to-end decision accuracy on a frozen 200-example heldout test set.**
+> **Hybrid RAG Support Agent Prototype — 65.5% intent accuracy, 95.0% escalation recall, and 58.0% end-to-end decision accuracy on a frozen 200-example heldout test set.**
 
 ---
 
 ## 1. Executive Summary & Benchmark Comparison
 
-The system is an end-to-end **AI Customer Support Agent prototype** for e-commerce (`@AmazonHelp`), featuring multi-task **Intent Classification**, **Deterministic Escalation Routing**, **Historical RAG Retrieval**, and **LLM-as-Judge Reply Quality Evaluation**.
+This repository contains an end-to-end **AI Customer Support Agent prototype** for e-commerce (`@AmazonHelp`), featuring multi-task **Intent Classification**, **Deterministic Escalation Routing**, **Historical RAG Retrieval**, and an **LLM-as-Judge Reply Quality Evaluation**.
 
-### Key Evaluation Context:
-- **Frozen Heldout Benchmark**: Evaluated on a strictly frozen 200-example heldout test set (`heldout_test_final.csv`, Seed 2026).
-- **Separate Development Set**: A distinct 200-example human-audited development set (`golden_set_final.csv`, Seed 42) was used for taxonomy and escalation policy creation.
-- **Comparable Baselines**: Two rule-based baselines (V1, V2) and an ML baseline (TF-IDF + Logistic Regression) were evaluated on the **exact same frozen heldout set**.
-- **No Data Leakage**: Current conversation IDs were strictly excluded from vector retrieval during evaluation. Historical evidence is used solely for response style and resolution grounding, **not** as hidden ground-truth labels.
+### Final Heldout Benchmark Results (n=200 Frozen Test Set)
 
-### Final Heldout Benchmark Results (n=200)
-
-| System / Baseline | Architecture | Evaluation Split | Intent Acc | Intent Macro F1 | Escalation Acc | Escalation Recall | Escalation F1 | Combined Acc |
+| System / Baseline | Architecture / Method | Evaluation Split | Intent Acc | Intent Macro F1 | Escalation Acc | Escalation Recall | Escalation F1 | Combined Acc |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Rule-Based V1** | Keyword Heuristics | **HELDOUT** | 60.50% | 0.5447 | 78.50% | 84.38% | 0.8060 | 52.50% |
-| **Rule-Based V2** | Refined Heuristics | **HELDOUT** | 58.50% | 0.4643 | 76.50% | 78.13% | 0.8418 | 50.50% |
+| **Rule-Based V2** | Refined Pattern Rules | **HELDOUT** | 58.50% | 0.4643 | 76.50% | 78.13% | 0.8418 | 50.50% |
 | **TF-IDF + LogReg** | ML Classifier (1,000 feat) | **HELDOUT** | 53.00% | 0.4030 | **86.00%** | 93.75% | **0.9146** | 48.00% |
 | **Hybrid RAG (Final)** | Ollama Qwen2.5:3B + Policy | **HELDOUT** | **65.50%** | **0.5836** | 84.00% | **95.00%** | 0.9048 | **58.00%** |
 | *DistilBERT (Dev)* | Fine-Tuned Transformer | *DEV / CV Only* | *75.00%* | *0.6959* | *65.00%* | *N/A* | *0.7813* | *47.50%* |
@@ -36,7 +30,7 @@ The system is an end-to-end **AI Customer Support Agent prototype** for e-commer
 
 ## 2. Evaluation Design & Data Splits
 
-To prevent overfitting and benchmark contamination, the evaluation design uses strict separation:
+To ensure evaluation rigor and prevent benchmark contamination, the data architecture enforces strict separation:
 
 ```
 TWCS Dataset (@AmazonHelp Subset: 374,304 tweets, 82,636 threads)
@@ -53,12 +47,15 @@ retrieval evidence             Development (Seed 42)                0 Dev Overla
 - **Frozen Heldout Set (`heldout_test_final.csv`, n=200)**: Independently human-audited. Kept completely untouched during development. Zero thread overlap with development set (340 root conversations excluded). Heldout labels were strictly hidden during inference and tuning.
 - **Baseline Alignment**: The exact same 200-example heldout set was used to evaluate Rule-Based V1, Rule-Based V2, TF-IDF + Logistic Regression, and the Hybrid RAG system.
 
+> [!IMPORTANT]
+> **Evaluation Comparability Note**: Direct numerical comparison with external benchmarks or alternative submissions must be interpreted with caution. Reported metrics depend heavily on specific intent taxonomy definitions (e.g. 5-class vs 11-class), sampling distributions, thread filtering heuristics, and whether evaluation was performed on a true frozen heldout set or an un-audited development split. Across all baselines in this repository, evaluation was conducted on the exact same 200-example frozen heldout test set (`heldout_test_final.csv`).
+
 ---
 
 ## 3. System Architecture & Technical Flow
 
 ```
-Incoming Customer Conversation
+Incoming Customer Conversation Thread
         │
         ▼
 Conversation Reconstruction & Context Preprocessing
@@ -81,7 +78,7 @@ Deterministic Escalation Policy Engine (Final Authority)
         └─► Third-Party Dispute Rule
         │
         ▼
-Final Decision Output: Intent + Final Escalation (True/False) + Public Reply + Reason
+Final Output: Intent + Final Escalation (True/False) + Public Reply + Reason
 ```
 
 ### Technical Design Clarifications:
@@ -91,7 +88,18 @@ Final Decision Output: Intent + Final Escalation (True/False) + Public Reply + R
 
 ---
 
-## 4. Intent Taxonomy (11 Classes)
+## 4. Engineering Rigor & Implementation Highlights
+
+- **Data Leakage Prevention**: Enforces explicit conversation-ID exclusion in `src/retrieval.py` during FAISS vector search to prevent an example from retrieving its own historical turns.
+- **Deterministic Escalation Authority**: Decouples LLM intent prediction from escalation policy enforcement. A deterministic rule engine evaluates domain rules (order lookups, account security, refunds, seller disputes) as the final authority, preventing LLM safety bypasses.
+- **Reproducible Artifact Logging**: Every run writes structured JSON metrics, per-example CSV predictions, confusion matrices, and detailed execution logs to `evaluation/results/`.
+- **Comprehensive Decision Log**: Documents 13 non-obvious engineering decisions ([`evaluation/results/decision_log.md`](./evaluation/results/decision_log.md)), detailing trade-offs, architecture choices, and evaluation split protocols.
+- **Interactive Human Annotation Web UI**: Includes a standalone, zero-dependency local web application ([`evaluation/reply_quality/annotate_replies.py`](./evaluation/reply_quality/annotate_replies.py)) for human annotation, complete with progress tracking, guideline cards, and real-time state persistence.
+- **Test Suite**: Includes unit and smoke testing scripts for LLM connectivity, retrieval accuracy, latency benchmarks, and prompt schema validation (`src/test_ollama.py`, `src/test_retrieval.py`, `src/test_prompt_smoke.py`).
+
+---
+
+## 5. Intent Taxonomy (11 Classes)
 
 1. `delivery_shipping_delay`: Order status, late shipments, tracking inquiries.
 2. `returns_refund_inquiry`: Return procedures, refund timelines, return labels.
@@ -107,7 +115,7 @@ Final Decision Output: Intent + Final Escalation (True/False) + Public Reply + R
 
 ---
 
-## 5. Failure Analysis & Error Patterns
+## 6. Failure Analysis & Error Patterns
 
 ### Dominant Failure Pattern: Over-Prediction of Delivery Issues
 The primary intent classification weakness is the systematic over-prediction of `delivery_shipping_delay` (59/200 heldout examples, 100% recall, 56.19% precision).
@@ -143,7 +151,7 @@ The primary intent classification weakness is the systematic over-prediction of 
 
 ---
 
-## 6. Reply Quality Evaluation & Human Agreement
+## 7. Reply Quality Evaluation & Human Agreement
 
 An **LLM-as-Judge evaluation** paired with a **Human Agreement Study** was conducted on a representative 50-example heldout subset across 6 dimensions (1–5 scale).
 
@@ -163,7 +171,7 @@ An **LLM-as-Judge evaluation** paired with a **Human Agreement Study** was condu
 
 ---
 
-## 7. What Is Misleading About My Headline Number?
+## 8. What Is Misleading About My Headline Number?
 
 The **65.50%** intent accuracy is useful but incomplete:
 1. **Class Imbalance Distortion**: Over-predicting the majority class (`delivery_shipping_delay`, 100% recall) inflates overall accuracy while masking weak performance on minority classes (`unclear_other` 17.65% recall, `marketplace_third_party_seller` 25.00% recall). The Macro F1 of **0.5836** exposes this imbalance.
@@ -172,7 +180,7 @@ The **65.50%** intent accuracy is useful but incomplete:
 
 ---
 
-## 8. What I Would Improve Next
+## 9. What I Would Improve Next
 
 To systematically improve performance without contaminating the frozen heldout benchmark:
 
@@ -184,7 +192,7 @@ To systematically improve performance without contaminating the frozen heldout b
 
 ---
 
-## 9. Reproducibility & Quickstart
+## 10. Reproducibility & Quickstart
 
 > [!NOTE]
 > The recorded frozen heldout evaluation completed in approximately **11.3 minutes** (679.7s) after setup prerequisites and the retrieval index were available.
@@ -218,7 +226,7 @@ python3 evaluation/reply_quality/annotate_replies.py --port 8500
 
 ---
 
-## 10. Repository Structure
+## 11. Repository Structure
 
 ```
 hiver-sde-intern-assignment/

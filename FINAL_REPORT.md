@@ -47,6 +47,8 @@ retrieval evidence             Development (Seed 42)                0 Dev Overla
 - **Leakage Prevention**: Zero thread overlap with development set (340 root conversations excluded).
 - **Human Verification**: 100% independently human-audited. Kept completely frozen during development; heldout labels were strictly hidden during inference and tuning.
 
+> **Evaluation Comparability Note**: Direct numerical comparison with external benchmarks or alternative submissions must be interpreted with caution. Reported metrics depend heavily on specific intent taxonomy definitions (e.g. 5-class vs 11-class), sampling distributions, thread filtering heuristics, and whether evaluation was performed on a true frozen heldout set or an un-audited development split. Across all baselines in this repository, evaluation was conducted on the exact same 200-example frozen heldout test set (`heldout_test_final.csv`).
+
 ---
 
 ## 3. Approach (Hybrid RAG Architecture)
@@ -54,10 +56,10 @@ retrieval evidence             Development (Seed 42)                0 Dev Overla
 The final system uses a **Hybrid RAG Pipeline** combining local LLM semantic understanding with deterministic policy safety:
 
 ```
-Incoming Customer Conversation
+Incoming Customer Conversation Thread
         │
         ▼
-Context Reconstruction & Vector Search (FAISS + MiniLM-L6-v2) ──► Top-3 Resolved Historical Cases
+Conversation Reconstruction & Vector Search (FAISS + MiniLM-L6-v2) ──► Top-3 Resolved Historical Cases
 (Current Conversation ID Excluded)
         │
         ▼
@@ -74,7 +76,7 @@ Deterministic Escalation Policy Engine (Final Authority)
         └─► Marketplace Dispute Check
         │
         ▼
-Final Escalation Decision + Rationale Output
+Final Decision Output: Intent + Final Escalation (True/False) + Public Reply + Reason
 ```
 
 ### Architectural Principles:
@@ -84,7 +86,18 @@ Final Escalation Decision + Rationale Output
 
 ---
 
-## 4. Baselines
+## 4. Engineering Rigor & Implementation Highlights
+
+- **Data Leakage Prevention**: Enforces explicit conversation-ID exclusion in `src/retrieval.py` during FAISS vector search to prevent an example from retrieving its own historical turns.
+- **Deterministic Escalation Authority**: Decouples LLM intent prediction from escalation policy enforcement. A deterministic rule engine evaluates domain rules (order lookups, account security, refunds, seller disputes) as the final authority, preventing LLM safety bypasses.
+- **Reproducible Artifact Logging**: Every run writes structured JSON metrics, per-example CSV predictions, confusion matrices, and detailed execution logs to `evaluation/results/`.
+- **Comprehensive Decision Log**: Documents 13 non-obvious engineering decisions (`evaluation/results/decision_log.md`), detailing trade-offs, architecture choices, and evaluation split protocols.
+- **Interactive Human Annotation Web UI**: Includes a standalone, zero-dependency local web application (`evaluation/reply_quality/annotate_replies.py`) for human annotation, complete with progress tracking, guideline cards, and real-time state persistence.
+- **Test Suite**: Includes unit and smoke testing scripts for LLM connectivity, retrieval accuracy, latency benchmarks, and prompt schema validation (`src/test_ollama.py`, `src/test_retrieval.py`, `src/test_prompt_smoke.py`).
+
+---
+
+## 5. Baselines
 
 We compare our Hybrid RAG system against pre-existing baselines evaluated on the exact same 200-example frozen heldout test set:
 
@@ -96,9 +109,9 @@ We compare our Hybrid RAG system against pre-existing baselines evaluated on the
 
 ---
 
-## 5. Final Frozen Heldout Benchmark Results
+## 6. Final Frozen Heldout Benchmark Results
 
-### 5.1 System Benchmark Comparison (n=200 Heldout)
+### 6.1 System Benchmark Comparison (n=200 Heldout)
 
 | System | Intent Acc | Intent Macro F1 | Esc Acc | Esc Precision | Esc Recall | Esc F1 | Combined Acc |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -110,7 +123,7 @@ We compare our Hybrid RAG system against pre-existing baselines evaluated on the
 - **Escalation Confusion Matrix (Hybrid RAG)**: TP = 152, FN = 8, FP = 24, TN = 16 (Precision: 0.8636, Recall: 0.9500).
 - **Recorded Runtime**: The recorded frozen heldout evaluation completed in approximately **11.3 minutes** (679.7 seconds) after prerequisites and the retrieval index were available. Avg LLM Latency: 3.18s (Median: 2.92s). Avg Retrieval Latency: ~210 ms.
 
-### 5.2 Per-Intent Performance (Hybrid RAG Heldout)
+### 6.2 Per-Intent Performance (Hybrid RAG Heldout)
 
 | Intent | Support | Precision | Recall | F1 Score |
 | :--- | :---: | :---: | :---: | :---: |
@@ -128,7 +141,7 @@ We compare our Hybrid RAG system against pre-existing baselines evaluated on the
 
 ---
 
-## 6. Reply Quality Evaluation & Human Agreement
+## 7. Reply Quality Evaluation & Human Agreement
 
 Evaluated on a 50-example representative heldout subset across 6 dimensions (1-5 scale):
 
@@ -147,7 +160,7 @@ Evaluated on a 50-example representative heldout subset across 6 dimensions (1-5
 
 ---
 
-## 7. Top 5 Failure Modes (with Real Heldout Examples)
+## 8. Top 5 Failure Modes (with Real Heldout Examples)
 
 ### 1. Returns / Refunds Mistaken for Delivery (11 examples)
 - **Example**:  
@@ -183,13 +196,13 @@ Evaluated on a 50-example representative heldout subset across 6 dimensions (1-5
 
 ---
 
-## 8. What Is Misleading About My Headline Number?
+## 9. What Is Misleading About My Headline Number?
 
-The **65.50%** intent accuracy is useful but incomplete. It averages over an uneven intent distribution and hides weak performance on lower-frequency intents; Macro F1 of **0.5836** exposes this. Combined decision accuracy is only **58.00%**, showing that correct intent classification does not always translate into the correct downstream escalation decision. The heldout set contains 200 examples, so the result should be interpreted as an evaluation snapshot rather than a production performance estimate.
+The 65.50% intent accuracy is useful but incomplete. It averages over an uneven intent distribution and hides weak performance on lower-frequency intents; Macro F1 of 0.5836 exposes this. Combined decision accuracy is only 58.0%, showing that correct intent classification does not always translate into the correct downstream escalation decision. The heldout set contains 200 examples, so the result should be interpreted as an evaluation snapshot rather than a production performance estimate.
 
 ---
 
-## 9. Decision Log Summary
+## 10. Decision Log Summary
 
 1. **Conversation-Level Framing**: Evaluated complete multi-turn threads rather than single tweets for realistic support context.
 2. **Domain Focus**: Restricted dataset to `@AmazonHelp` for clean e-commerce domain consistency.
@@ -201,7 +214,7 @@ The **65.50%** intent accuracy is useful but incomplete. It averages over an une
 
 ---
 
-## 10. What I Would Improve Next
+## 11. What I Would Improve Next
 
 1. **Hard-Negative Training & Few-Shot Examples**: Add explicit hard-negative few-shot examples differentiating delivery delays from refund requests, item condition complaints, and marketplace disputes.
 2. **Ambiguity Handling**: Introduce structured clarifying prompts for generic queries before assigning a functional intent.
@@ -211,7 +224,7 @@ The **65.50%** intent accuracy is useful but incomplete. It averages over an une
 
 ---
 
-## 11. Limitations
+## 12. Limitations
 
 - **Domain Scope**: Tailored to `@AmazonHelp` e-commerce workflows; adapting to telecom or banking requires re-indexing.
 - **Majority Class Bias**: Heuristics favor `delivery_shipping_delay` under high uncertainty.
