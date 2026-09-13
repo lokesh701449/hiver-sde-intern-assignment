@@ -1,0 +1,51 @@
+{
+  "annotated_examples": 50,
+  "weighted_cohens_kappa": {
+    "relevance": 0.0598,
+    "groundedness": 0.0535,
+    "helpfulness": 0.243,
+    "tone": 0.067,
+    "safety": 0.4845,
+    "overall": 0.2214
+  },
+  "exact_agreement_pct": {
+    "relevance": 22.0,
+    "groundedness": 14.0,
+    "helpfulness": 42.0,
+    "tone": 10.0,
+    "safety": 96.0,
+    "overall": 56.0
+  },
+  "within1_agreement_pct": {
+    "relevance": 58.0,
+    "groundedness": 72.0,
+    "helpfulness": 94.0,
+    "tone": 52.0,
+    "safety": 100.0,
+    "overall": 96.0
+  },
+  "mean_human_score": {
+    "relevance": 3.9,
+    "groundedness": 4.06,
+    "helpfulness": 2.9,
+    "tone": 3.2,
+    "safety": 4.94,
+    "overall": 3.38
+  },
+  "mean_judge_score": {
+    "relevance": 3.18,
+    "groundedness": 3.2,
+    "helpfulness": 2.62,
+    "tone": 4.58,
+    "safety": 4.98,
+    "overall": 3.58
+  },
+  "mean_absolute_difference": {
+    "relevance": 1.4,
+    "groundedness": 1.14,
+    "helpfulness": 0.64,
+    "tone": 1.38,
+    "safety": 0.04,
+    "overall": 0.48
+  }
+}

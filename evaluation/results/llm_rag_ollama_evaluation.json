@@ -1,0 +1,333 @@
+{
+  "evaluation_version": "V1",
+  "protocol": "Fixed V1 prompt \u2014 no post-hoc tuning",
+  "provider": "ollama/qwen2.5:3b",
+  "total_examples": 200,
+  "successful_examples": 200,
+  "failed_calls": 0,
+  "metrics": {
+    "intent_accuracy": 0.66,
+    "intent_macro_f1": 0.6046,
+    "escalation_accuracy": 0.325,
+    "escalation_precision": 0.0,
+    "escalation_recall": 0.0,
+    "escalation_f1": 0.0,
+    "combined_accuracy": 0.17
+  },
+  "per_intent": {
+    "delivery_shipping_delay": {
+      "support": 56,
+      "precision": 0.5283,
+      "recall": 1.0,
+      "f1": 0.6914
+    },
+    "returns_refund_inquiry": {
+      "support": 21,
+      "precision": 0.7391,
+      "recall": 0.8095,
+      "f1": 0.7727
+    },
+    "item_condition_issue": {
+      "support": 24,
+      "precision": 0.6667,
+      "recall": 0.25,
+      "f1": 0.3636
+    },
+    "device_hardware_support": {
+      "support": 8,
+      "precision": 0.875,
+      "recall": 0.875,
+      "f1": 0.875
+    },
+    "prime_membership_billing": {
+      "support": 8,
+      "precision": 0.8,
+      "recall": 0.5,
+      "f1": 0.6154
+    },
+    "digital_streaming_services": {
+      "support": 16,
+      "precision": 0.7647,
+      "recall": 0.8125,
+      "f1": 0.7879
+    },
+    "account_access_security": {
+      "support": 17,
+      "precision": 0.9375,
+      "recall": 0.8824,
+      "f1": 0.9091
+    },
+    "payment_promo_giftcard": {
+      "support": 13,
+      "precision": 0.8889,
+      "recall": 0.6154,
+      "f1": 0.7273
+    },
+    "order_modification_cancellation": {
+      "support": 6,
+      "precision": 0.5,
+      "recall": 0.1667,
+      "f1": 0.25
+    },
+    "marketplace_third_party_seller": {
+      "support": 4,
+      "precision": 1.0,
+      "recall": 0.25,
+      "f1": 0.4
+    },
+    "unclear_other": {
+      "support": 27,
+      "precision": 1.0,
+      "recall": 0.1481,
+      "f1": 0.2581
+    }
+  },
+  "escalation_cm": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 135,
+    "tn": 65
+  },
+  "full_confusion_matrix": {
+    "delivery_shipping_delay": {
+      "delivery_shipping_delay": 56,
+      "returns_refund_inquiry": 0,
+      "item_condition_issue": 0,
+      "device_hardware_support": 0,
+      "prime_membership_billing": 0,
+      "digital_streaming_services": 0,
+      "account_access_security": 0,
+      "payment_promo_giftcard": 0,
+      "order_modification_cancellation": 0,
+      "marketplace_third_party_seller": 0,
+      "unclear_other": 0
+    },
+    "returns_refund_inquiry": {
+      "delivery_shipping_delay": 3,
+      "returns_refund_inquiry": 17,
+      "item_condition_issue": 1,
+      "device_hardware_support": 0,
+      "prime_membership_billing": 0,
+      "digital_streaming_services": 0,
+      "account_access_security": 0,
+      "payment_promo_giftcard": 0,
+      "order_modification_cancellation": 0,
+      "marketplace_third_party_seller": 0,
+      "unclear_other": 0
+    },
+    "item_condition_issue": {
+      "delivery_shipping_delay": 15,
+      "item_condition_issue": 6,
+      "returns_refund_inquiry": 2,
+      "digital_streaming_services": 1,
+      "device_hardware_support": 0,
+      "prime_membership_billing": 0,
+      "account_access_security": 0,
+      "payment_promo_giftcard": 0,
+      "order_modification_cancellation": 0,
+      "marketplace_third_party_seller": 0,
+      "unclear_other": 0
+    },
+    "device_hardware_support": {
+      "device_hardware_support": 7,
+      "delivery_shipping_delay": 1,
+      "returns_refund_inquiry": 0,
+      "item_condition_issue": 0,
+      "prime_membership_billing": 0,
+      "digital_streaming_services": 0,
+      "account_access_security": 0,
+      "payment_promo_giftcard": 0,
+      "order_modification_cancellation": 0,
+      "marketplace_third_party_seller": 0,
+      "unclear_other": 0
+    },
+    "prime_membership_billing": {
+      "prime_membership_billing": 4,
+      "delivery_shipping_delay": 4,
+      "returns_refund_inquiry": 0,
+      "item_condition_issue": 0,
+      "device_hardware_support": 0,
+      "digital_streaming_services": 0,
+      "account_access_security": 0,
+      "payment_promo_giftcard": 0,
+      "order_modification_cancellation": 0,
+      "marketplace_third_party_seller": 0,
+      "unclear_other": 0
+    },
+    "digital_streaming_services": {
+      "delivery_shipping_delay": 2,
+      "device_hardware_support": 1,
+      "digital_streaming_services": 13,
+      "returns_refund_inquiry": 0,
+      "item_condition_issue": 0,
+      "prime_membership_billing": 0,
+      "account_access_security": 0,
+      "payment_promo_giftcard": 0,
+      "order_modification_cancellation": 0,
+      "marketplace_third_party_seller": 0,
+      "unclear_other": 0
+    },
+    "account_access_security": {
+      "account_access_security": 15,
+      "prime_membership_billing": 1,
+      "delivery_shipping_delay": 1,
+      "returns_refund_inquiry": 0,
+      "item_condition_issue": 0,
+      "device_hardware_support": 0,
+      "digital_streaming_services": 0,
+      "payment_promo_giftcard": 0,
+      "order_modification_cancellation": 0,
+      "marketplace_third_party_seller": 0,
+      "unclear_other": 0
+    },
+    "payment_promo_giftcard": {
+      "delivery_shipping_delay": 2,
+      "returns_refund_inquiry": 2,
+      "payment_promo_giftcard": 8,
+      "account_access_security": 1,
+      "item_condition_issue": 0,
+      "device_hardware_support": 0,
+      "prime_membership_billing": 0,
+      "digital_streaming_services": 0,
+      "order_modification_cancellation": 0,
+      "marketplace_third_party_seller": 0,
+      "unclear_other": 0
+    },
+    "order_modification_cancellation": {
+      "delivery_shipping_delay": 3,
+      "returns_refund_inquiry": 1,
+      "order_modification_cancellation": 1,
+      "payment_promo_giftcard": 1,
+      "item_condition_issue": 0,
+      "device_hardware_support": 0,
+      "prime_membership_billing": 0,
+      "digital_streaming_services": 0,
+      "account_access_security": 0,
+      "marketplace_third_party_seller": 0,
+      "unclear_other": 0
+    },
+    "marketplace_third_party_seller": {
+      "delivery_shipping_delay": 2,
+      "item_condition_issue": 1,
+      "marketplace_third_party_seller": 1,
+      "returns_refund_inquiry": 0,
+      "device_hardware_support": 0,
+      "prime_membership_billing": 0,
+      "digital_streaming_services": 0,
+      "account_access_security": 0,
+      "payment_promo_giftcard": 0,
+      "order_modification_cancellation": 0,
+      "unclear_other": 0
+    },
+    "unclear_other": {
+      "delivery_shipping_delay": 17,
+      "unclear_other": 4,
+      "order_modification_cancellation": 1,
+      "digital_streaming_services": 3,
+      "item_condition_issue": 1,
+      "returns_refund_inquiry": 1,
+      "device_hardware_support": 0,
+      "prime_membership_billing": 0,
+      "account_access_security": 0,
+      "payment_promo_giftcard": 0,
+      "marketplace_third_party_seller": 0
+    }
+  },
+  "top_confusions": [
+    {
+      "actual": "unclear_other",
+      "predicted": "delivery_shipping_delay",
+      "count": 17
+    },
+    {
+      "actual": "item_condition_issue",
+      "predicted": "delivery_shipping_delay",
+      "count": 15
+    },
+    {
+      "actual": "prime_membership_billing",
+      "predicted": "delivery_shipping_delay",
+      "count": 4
+    },
+    {
+      "actual": "returns_refund_inquiry",
+      "predicted": "delivery_shipping_delay",
+      "count": 3
+    },
+    {
+      "actual": "order_modification_cancellation",
+      "predicted": "delivery_shipping_delay",
+      "count": 3
+    },
+    {
+      "actual": "unclear_other",
+      "predicted": "digital_streaming_services",
+      "count": 3
+    },
+    {
+      "actual": "digital_streaming_services",
+      "predicted": "delivery_shipping_delay",
+      "count": 2
+    },
+    {
+      "actual": "payment_promo_giftcard",
+      "predicted": "delivery_shipping_delay",
+      "count": 2
+    },
+    {
+      "actual": "payment_promo_giftcard",
+      "predicted": "returns_refund_inquiry",
+      "count": 2
+    },
+    {
+      "actual": "item_condition_issue",
+      "predicted": "returns_refund_inquiry",
+      "count": 2
+    }
+  ],
+  "runtime": {
+    "total_s": 916.3,
+    "avg_llm_ms": 4080.5,
+    "median_llm_ms": 3875.7,
+    "avg_retrieval_ms": 374.6,
+    "api_calls": 200
+  },
+  "retrieval": {
+    "avg_similarity": 0.6995,
+    "avg_confidence": 0.919
+  },
+  "baselines": {
+    "Rule-Based V2 (dev full-set)": {
+      "intent_acc": 0.615,
+      "macro_f1": 0.5495,
+      "esc_acc": 0.785,
+      "esc_f1": 0.8436,
+      "combined_acc": 0.52,
+      "protocol": "Full 200-example dev set evaluation"
+    },
+    "TF-IDF + LR (5-fold CV dev)": {
+      "intent_acc": 0.575,
+      "macro_f1": 0.4279,
+      "esc_acc": 0.805,
+      "esc_f1": null,
+      "combined_acc": null,
+      "protocol": "5-fold stratified CV on 200 dev examples"
+    },
+    "DistilBERT (5-fold CV dev)": {
+      "intent_acc": 0.42,
+      "macro_f1": 0.2505,
+      "esc_acc": 0.675,
+      "esc_f1": null,
+      "combined_acc": 0.315,
+      "protocol": "5-fold CV on 200 dev examples (high variance \u00b15%)"
+    },
+    "DistilBERT (dev 80/20 split)": {
+      "intent_acc": 0.75,
+      "macro_f1": 0.6959,
+      "esc_acc": 0.65,
+      "esc_f1": 0.7813,
+      "combined_acc": 0.475,
+      "protocol": "Single 80/20 stratified split (n=40 val; may be high-variance)"
+    }
+  }
+}
