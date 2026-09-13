@@ -51,8 +51,8 @@ This log documents key technical, architectural, and evaluation design decisions
 
 ### Decision 10: Decoupling LLM Generation from Deterministic Escalation Policy (Hybrid RAG)
 - **Decision**: Rely on the local LLM (`qwen2.5:3b`) for intent classification and public reply drafting, but use a deterministic policy for final escalation decisions.
-- **Why**: Pure LLM escalation predictions exhibited heavy bias (e.g. predicting `escalate=False` for all cases despite explicit prompts). Deterministic policy rules guarantee 100% predictable, high-recall escalation for sensitive customer actions.
-- **Tradeoff**: Requires maintainable rule definition based on domain signals (order lookup, DM requests, damage reports).
+- **Why**: Pure LLM escalation predictions exhibited heavy bias (e.g. predicting `escalate=False` for all cases despite explicit prompts). Deterministic policy rules provide predictable escalation behavior and improve safety for sensitive customer actions, while heldout evaluation shows 95.0% escalation recall.
+- **Tradeoff**: Requires rule definition based on domain signals (order lookup, DM requests, damage reports).
 
 ### Decision 11: Prioritizing Intent Macro F1 Alongside Accuracy
 - **Decision**: Evaluate intent performance using Macro F1 alongside overall Accuracy.

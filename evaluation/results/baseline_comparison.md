@@ -6,16 +6,16 @@
 
 ## 1. Comparable Heldout Benchmark Comparison
 
-| System / Baseline | Architecture / Method | Intent Acc | Intent Macro F1 | Escalation Acc | Escalation F1 | Combined Acc |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Rule-Based Baseline V1** | Keyword / Heuristic Rules | 60.50% | 0.5447 | 78.50% | 0.8060 | 52.50% |
-| **Rule-Based Baseline V2** | Refined Pattern Matching | 58.50% | 0.4643 | 76.50% | 0.8418 | 50.50% |
-| **ML Baseline** | TF-IDF + Logistic Regression | 53.00% | 0.4030 | **86.00%** | **0.9146** | 48.00% |
-| **Hybrid RAG + LLM (Final)** | Ollama `qwen2.5:3b` + RAG + Deterministic Policy | **65.50%** | **0.5836** | 84.00% | 0.9048 | **58.00%** |
+| System | Intent Acc | Intent Macro F1 | Esc Acc | Esc F1 | Combined |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| **Rule V1** | 60.50% | 0.5447 | 78.50% | 0.8060 | 52.50% |
+| **Rule V2** | 58.50% | 0.4643 | 76.50% | 0.8418 | 50.50% |
+| **TF-IDF + Logistic Regression** | 53.00% | 0.4030 | **86.00%** | **0.9146** | 48.00% |
+| **Hybrid RAG + LLM** | **65.50%** | **0.5836** | 84.00% | 0.9048 | **58.00%** |
 
 > [!NOTE]
 > **Transformer Model Note**:
-> Transformer results (Fine-tuned DistilBERT) are excluded from the comparable HELDOUT table above because DistilBERT was evaluated on an 80/20 Stratified Development Split (`golden_set_final.csv`, Val n=40; Intent Acc: 75.00%, Macro F1: 0.6959, Esc Acc: 65.00%) and 5-Fold Cross-Validation (`71.50% ± 4.64%`). It was not evaluated on the frozen 200-example heldout test benchmark.
+> Transformer results (Fine-tuned DistilBERT) are excluded from this comparable HELDOUT table because only DEV/CV results were recorded (`golden_set_final.csv` 80/20 Val n=40; Intent Acc: 75.00%, Macro F1: 0.6959, Esc Acc: 65.00%; 5-Fold CV: 71.50% ± 4.64%). They are not comparable heldout benchmark numbers.
 
 ---
 

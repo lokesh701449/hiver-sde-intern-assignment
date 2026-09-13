@@ -2,7 +2,7 @@
 
 > **Author**: Chalasani Lokesh  
 > **Repository**: [hiver-sde-intern-assignment](https://github.com/lokesh701449/hiver-sde-intern-assignment.git)  
-> **System Architecture**: Hybrid RAG (Ollama Qwen2.5 3B + FAISS Historical Evidence + Deterministic Escalation Policy)
+> **System Architecture**: Hybrid RAG Prototype (Ollama Qwen2.5 3B + FAISS Historical Evidence + Deterministic Escalation Policy)
 
 ---
 
@@ -71,7 +71,7 @@ Final Escalation Decision + Rationale
 ### Key Architectural Choices:
 1. **Local LLM (`qwen2.5:3b`)**: Zero-shot semantic intent classification and public reply drafting via structured JSON output.
 2. **FAISS Historical Retrieval**: Indexes 25,544 resolved AmazonHelp conversations using `sentence-transformers/all-MiniLM-L6-v2` (384-dim). During evaluation, the current conversation ID is strictly excluded from retrieval to prevent data leakage.
-3. **Deterministic Escalation Policy**: LLMs often fail on negative constraint enforcement (e.g. predicting `escalate=False` for private order inquiries). A deterministic policy engine evaluates domain rules and overrides escalation decisions for 100% predictable safety.
+3. **Deterministic Escalation Policy**: Deterministic policy rules provide predictable escalation behavior and improve safety for sensitive customer actions, while the heldout evaluation shows 95.0% escalation recall.
 
 ---
 
@@ -83,7 +83,7 @@ We compare our Hybrid RAG system against pre-existing baselines evaluated on the
 2. **Rule-Based Baseline V2**: Refined keyword and regex rules.
 3. **Machine Learning Baseline**: TF-IDF (1,000 features) + Logistic Regression (trained on 200 dev examples).
 
-*Note: Fine-tuned DistilBERT results (Intent Acc: 75.00%, Macro F1: 0.6959) are from an 80/20 Dev Split (n=40 val) and 5-Fold CV (`71.50% ± 4.64%`), and are excluded from heldout comparison.*
+*Note: Fine-tuned DistilBERT results (Intent Acc: 75.00%, Macro F1: 0.6959) are from an 80/20 Dev Split (n=40 val) and 5-Fold CV (`71.50% ± 4.64%`), and are marked as DEV/CV evidence only.*
 
 ---
 
@@ -91,15 +91,15 @@ We compare our Hybrid RAG system against pre-existing baselines evaluated on the
 
 ### 5.1 System Benchmark Comparison (n=200 Heldout)
 
-| System / Baseline | Intent Acc | Intent Macro F1 | Escalation Acc | Escalation Precision | Escalation Recall | Escalation F1 | Combined Acc |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Rule V1** | 60.50% | 0.5447 | 78.50% | 0.7714 | 0.8438 | 0.8060 | 52.50% |
-| **Rule V2** | 58.50% | 0.4643 | 76.50% | 0.8170 | 0.7813 | 0.8418 | 50.50% |
-| **TF-IDF + LogReg** | 53.00% | 0.4030 | **86.00%** | **0.8929** | 0.9375 | **0.9146** | 48.00% |
-| **Hybrid RAG + LLM (Final)** | **65.50%** | **0.5836** | 84.00% | 0.8636 | **0.9500** | 0.9048 | **58.00%** |
+| System | Intent Acc | Intent Macro F1 | Esc Acc | Esc F1 | Combined |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| **Rule V1** | 60.50% | 0.5447 | 78.50% | 0.8060 | 52.50% |
+| **Rule V2** | 58.50% | 0.4643 | 76.50% | 0.8418 | 50.50% |
+| **TF-IDF + Logistic Regression** | 53.00% | 0.4030 | **86.00%** | **0.9146** | 48.00% |
+| **Hybrid RAG + LLM** | **65.50%** | **0.5836** | 84.00% | 0.9048 | **58.00%** |
 
-- **Escalation Confusion Matrix (Hybrid RAG)**: TP = 152, FN = 8, FP = 24, TN = 16.
-- **Latency & Runtime**: Total runtime: 679.7s (~11.3 min). Avg LLM Latency: 3.18s (Median: 2.92s). Avg Retrieval Latency: ~210 ms.
+- **Escalation Confusion Matrix (Hybrid RAG)**: TP = 152, FN = 8, FP = 24, TN = 16 (Precision: 0.8636, Recall: 0.9500).
+- **Latency & Recorded Runtime**: The recorded frozen heldout evaluation completed in approximately **11.3 minutes** (679.7 seconds) after prerequisites and the retrieval index were available. Avg LLM Latency: 3.18s (Median: 2.92s). Avg Retrieval Latency: ~210 ms.
 
 ### 5.2 Per-Intent Performance (Hybrid RAG Heldout)
 
@@ -117,21 +117,11 @@ We compare our Hybrid RAG system against pre-existing baselines evaluated on the
 | `unclear_other` | 17 | 1.0000 | 0.1765 | **0.3000** |
 | `order_modification_cancellation` | 6 | 0.2500 | 0.3333 | **0.2857** |
 
-### 5.3 Difficulty Breakdown
-
-| Difficulty Stratum | Count | Intent Accuracy | Escalation Accuracy | Combined Accuracy |
-| :--- | :---: | :---: | :---: | :---: |
-| **Easy** | 138 | 73.91% | 84.78% | 65.94% |
-| **Medium** | 52 | 48.08% | 80.77% | 42.31% |
-| **Hard** | 10 | 40.00% | 90.00% | 30.00% |
-
 ---
 
 ## 6. Reply Quality and Human Agreement
 
-We performed an **LLM-as-Judge evaluation** paired with an empirical **Human Agreement Study** on a 50-example representative heldout subset.
-
-### 6.1 Dimension Scores & Agreement Summary
+Evaluated on a 50-example representative heldout subset across 6 dimensions (1-5 scale):
 
 | Dimension | LLM Judge Mean (1-5) | Human Mean (1-5) | Mean Abs Diff | Weighted Cohen's Kappa | Exact Agreement % | Within-1 Agreement % |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -143,18 +133,42 @@ We performed an **LLM-as-Judge evaluation** paired with an empirical **Human Agr
 | **Overall Quality** | **3.580** | **3.38** | **0.48** | **0.2214** | **56.0%** | **96.0%** |
 
 ### Key Evaluation Insights:
-- **Strong Safety Alignment**: Safety achieves high weighted kappa (`0.4845`), `96.0%` exact agreement, and `100.0%` within-1 agreement. Both human annotators and the LLM judge confirm that the system safely avoids making false private account claims on public channels.
-- **LLM Judge Limits**: Subjective dimensions (Tone, Relevance) show weak kappa (`<0.07`), demonstrating that LLM judges serve as useful automated filters but cannot replace human evaluation.
+- **Strong Safety Alignment**: The human evaluation and LLM judge show strong agreement on safety (weighted kappa = `0.4845`, `96.0%` exact agreement, `100.0%` within-1 agreement).
+- **Secondary Evaluator Role**: The LLM judge is treated as a secondary evaluator rather than a replacement for human judgment due to modest agreement on subjective dimensions (Tone, Relevance).
 
 ---
 
-## 7. Top 5 Failure Modes
+## 7. Top 5 Failure Modes (with Real Heldout Examples)
 
-1. **Returns / Refunds Mistaken for Delivery** (11 examples): Customers asking "where is my refund for order X?" are frequently misclassified as `delivery_shipping_delay` due to tracking/delivery keywords.
-2. **Unclear / General Cases Mistaken for Delivery** (9 examples): Generic complaints ("my order is messed up") default to `delivery_shipping_delay`.
-3. **Item Condition Issues Mistaken for Delivery** (8 examples): Damage complaints mentioning package arrival dates trigger delivery heuristics.
-4. **Order Modifications Mistaken for Delivery** (4 examples): Address changes and cancellation requests mentioning shipping dates are classified as delivery issues.
-5. **Marketplace Third-Party Disputes Mistaken for Delivery** (4 examples): Complaints about third-party seller shipping delays default to standard delivery inquiries.
+### 1. Returns / Refunds Mistaken for Delivery (11 examples)
+- **Example**:  
+  Customer: `"@AmazonHelp I expect a refund for my delivery charge."`  
+  Gold intent: `returns_refund_inquiry` | Predicted intent: `delivery_shipping_delay`  
+- **Hypothesis**: The presence of the phrase "delivery charge" triggered delivery keyword heuristics, despite the primary request being a monetary refund inquiry.
+
+### 2. Unclear / General Inquiries Mistaken for Delivery (9 examples)
+- **Example**:  
+  Customer: `"@AmazonHelp May I ask why they're listed as prime if you can't deliver any the next day? I'd understand 1 item? But all 4 seems a poor service?"`  
+  Gold intent: `unclear_other` | Predicted intent: `delivery_shipping_delay`  
+- **Hypothesis**: Generic customer feedback regarding Prime delivery expectations contains delivery timing terms, leading the classifier to misclassify general feedback as an active delivery delay.
+
+### 3. Item Condition Issues Mistaken for Delivery (8 examples)
+- **Example**:  
+  Customer: `"@AmazonHelp It finally got here, 20 min late &amp; it’s missing food 😡"`  
+  Gold intent: `item_condition_issue` | Predicted intent: `delivery_shipping_delay`  
+- **Hypothesis**: The customer combined arrival timing ("20 min late") with a missing item complaint, causing delivery timing signals to overshadow the item condition issue.
+
+### 4. Order Modification / Cancellation Mistaken for Delivery (4 examples)
+- **Example**:  
+  Customer: `"@AmazonHelp Asked for you to contact courier? Put notes and directions on the system? Asked for different postcode to be applied but then hung up on me"`  
+  Gold intent: `order_modification_cancellation` | Predicted intent: `delivery_shipping_delay`  
+- **Hypothesis**: Logistics terms like "courier", "postcode", and "directions" dominate the context, steering prediction toward delivery issues rather than address modification.
+
+### 5. Marketplace Seller Disputes Mistaken for Delivery (4 examples)
+- **Example**:  
+  Customer: `"@AmazonHelp I’m not talking about delivery charges but the MRP rates. Even though seller indicates this doesn’t it mean you validate this stuff?"`  
+  Gold intent: `marketplace_third_party_seller` | Predicted intent: `delivery_shipping_delay`  
+- **Hypothesis**: Mentioning "delivery charges" while disputing third-party seller pricing causes the classifier to catch delivery keywords instead of seller validation intent.
 
 *Dominant Pattern*: Systematic over-prediction of `delivery_shipping_delay` (59/200 heldout examples, recall = 100%, precision = 56.19%).
 
@@ -162,10 +176,7 @@ We performed an **LLM-as-Judge evaluation** paired with an empirical **Human Agr
 
 ## 8. What Is Misleading About My Headline Number?
 
-The headline intent accuracy of **65.50%** is informative but incomplete:
-1. **Class Imbalance Distortion**: Over-predicting the majority class (`delivery_shipping_delay`, 100% recall) inflates overall accuracy while masking severe recall degradation on minor classes (`unclear_other` 17.65% recall, `marketplace_third_party_seller` 25.00% recall). The Macro F1 of **0.5836** exposes this imbalance.
-2. **Downstream Decision Gap**: Combined decision accuracy drops to **58.00%**, showing that correct intent prediction does not automatically guarantee correct downstream action execution.
-3. **Snapshot Limit**: The heldout set consists of 200 heldout examples; results represent an evaluation snapshot rather than a production guarantee.
+The 65.50% intent accuracy is useful but incomplete. It averages over an uneven intent distribution and hides weak performance on lower-frequency intents; Macro F1 of 0.5836 exposes this. Combined decision accuracy is only 58.0%, showing that correct intent classification does not always translate into the correct downstream escalation decision. The heldout set contains 200 examples, so the result should be interpreted as an evaluation snapshot rather than a production performance estimate.
 
 ---
 
@@ -177,13 +188,13 @@ The headline intent accuracy of **65.50%** is informative but incomplete:
 4. **80/10/10 Split Protocol**: Prevented data leakage across index building, golden development, and heldout evaluation.
 5. **100% Human Audit**: Corrected 107 out of 200 pre-labels to ensure a clean ground truth.
 6. **Retrieval Leakage Prevention**: Excluded current conversation IDs from vector retrieval during evaluation.
-7. **Hybrid Architecture**: Decoupled LLM reply drafting from deterministic escalation rules to guarantee 100% safe escalation routing.
+7. **Hybrid Architecture**: Decoupled LLM reply drafting from deterministic escalation rules to improve escalation safety.
 
 ---
 
 ## 10. One-Week Next Steps
 
-1. **Expand Rare Intent Labels**: Collect 500+ labelled examples for rare classes (`order_modification_cancellation`, `marketplace_third_party_seller`).
+1. **Expand Rare Intent Labels**: Collect 500+ labelled examples for minority intent classes (`order_modification_cancellation`, `marketplace_third_party_seller`).
 2. **Refine Intent Boundaries**: Add negative keyword constraints between delivery delays and return/refund inquiries.
 3. **Dense Reranking & Retrieval Filtering**: Implement cross-encoder reranking to improve historical case relevance.
 4. **Action-Aware Reply Generation**: Enhance public replies for escalated cases to explicitly explain DM routing next steps.
